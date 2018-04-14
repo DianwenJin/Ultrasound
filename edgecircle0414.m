@@ -1,0 +1,226 @@
+clc;
+clear;
+close all;
+%读取原图
+figure(1)
+% poly是五边形 Circle是圆形
+img = xlsread("testCircle2.xlsx");
+image(img);
+colorbar
+colormap(gray(128));
+title("原图");
+
+%截取有信号的部分
+figure(2)
+[row0,column0] = size(img);
+imagesqu = img(0.035*row0:0.695*row0,0.18*column0:0.83*column0);
+image(imagesqu);
+colorbar
+colormap(gray(128));
+title("原图有info的部分");
+
+%截取cyst部分显示
+figure(3)
+[row,column] = size(img);
+% cystimg = img(0.15*row:0.35*row,0.4*column:0.6*column);
+cystimg = img(0.3*row:0.55*row,0.35*column:0.65*column);
+image(cystimg);
+colorbar
+colormap(gray(128));
+title("截取cyst部分");
+
+%median filt
+Img_filt = medfilt2(cystimg,[10,10]);
+BWcyst = imbinarize(Img_filt);
+
+%转化为二值图像
+% BWcyst = imbinarize(cystimg);
+figure(4)
+Bcyst = ~BWcyst;
+imagesc(Bcyst);
+colormap(gray);
+title("二值化cyst");
+%算面积
+white_num = sum(Bcyst(:)==1);
+%边界追踪
+[m,n]=size(BWcyst);
+edge1=zeros(m,n);        %边界标记图像
+ed=[-1 -1;0 -1;1 -1;1 0;1 1;0 1;-1 1;-1 0]; %从左上角像素，逆时针搜索
+for i=2:m-1
+    for j=2:n-1
+        if Bcyst(i,j)==1 && edge1(i,j)==0      %当前是没标记的白色像素
+            if sum(sum(Bcyst(i-1:i+1,j-1:j+1)))~=9    %块内部的白像素不标记
+                ii=i;         %像素块内部搜寻使用的坐标
+                jj=j;
+                edge1(i,j)=2;    %本像素块第一个标记的边界，第一个边界像素为2
+                
+                while edge1(ii,jj)~=2    %是否沿着像素块搜寻一圈了。
+                    for k=1:8           %逆时针八邻域搜索
+                        tmpi=ii+ed(k,1);        %八邻域临时坐标
+                        tmpj=jj+ed(k,2);
+                        if Bcyst(tmpi,tmpj)==1 && edge1(tmpi,tmpj)~=2  %搜索到新边界，并且没有搜索一圈
+                            ii=tmpi;        %更新内部搜寻坐标，继续搜索
+                            jj=tmpj;
+                            edge1(ii,jj)=1;  %边界标记图像该像素标记，普通边界为1
+                            break;
+                        end
+                    end
+                end
+                
+            end
+        end
+    end
+end
+figure(5)
+edge1=edge1>=1;
+imagesc(edge1);
+colormap(gray);
+title("未插值边界");
+
+%%
+%截取有信号的部分
+img_info = img(0.035*row0:0.695*row0,0.18*column0:0.83*column0);
+%插值后长宽相等
+figure(6)
+imagesqu = imresize(img_info,[1000,1000]);
+% imshow(imagesqu);
+image(imagesqu)
+colorbar
+colormap(gray(128));
+title("插值后正方形图像");
+
+%截取cyst部分显示
+figure(7)
+[row,column] = size(imagesqu);
+% cystimg = imagesqu(0.2*row:0.45*row,0.35*column:0.65*column);
+cystimg = imagesqu(0.45*row:0.75*row,0.3*column:0.7*column);
+image(cystimg);
+colorbar
+colormap(gray(128));
+title("插值后截取cyst");
+
+%median filt
+Img_filt = medfilt2(cystimg,[10,10]);
+BWcyst = imbinarize(Img_filt);
+
+%转化为二值图像
+% BWcyst = imbinarize(cystimg);
+figure(8)
+Bcyst = ~BWcyst;
+imagesc(Bcyst);
+colormap(gray);
+title("插值后二值化cyst");
+
+%算面积
+white_num2 = sum(Bcyst(:)==1);
+
+%边界追踪
+[m,n]=size(BWcyst);
+edge1=zeros(m,n);        %边界标记图像
+ed=[-1 -1;0 -1;1 -1;1 0;1 1;0 1;-1 1;-1 0]; %从左上角像素，逆时针搜索
+for i=2:m-1
+    for j=2:n-1
+        if Bcyst(i,j)==1 && edge1(i,j)==0      %当前是没标记的白色像素
+            if sum(sum(Bcyst(i-1:i+1,j-1:j+1)))~=9    %块内部的白像素不标记
+                ii=i;         %像素块内部搜寻使用的坐标
+                jj=j;
+                edge1(i,j)=2;    %本像素块第一个标记的边界，第一个边界像素为2
+                
+                while edge1(ii,jj)~=2    %是否沿着像素块搜寻一圈了。
+                    for k=1:8           %逆时针八邻域搜索
+                        tmpi=ii+ed(k,1);        %八邻域临时坐标
+                        tmpj=jj+ed(k,2);
+                        if Bcyst(tmpi,tmpj)==1 && edge1(tmpi,tmpj)~=2  %搜索到新边界，并且没有搜索一圈
+                            ii=tmpi;        %更新内部搜寻坐标，继续搜索
+                            jj=tmpj;
+                            edge1(ii,jj)=1;  %边界标记图像该像素标记，普通边界为1
+                            break;
+                        end
+                    end
+                end
+                
+            end
+        end
+    end
+end
+figure(9)
+edge1=edge1>=1;
+imagesc(edge1);
+colormap(gray);
+title("插值后cyst边界");
+
+% % 画一个圆形
+% realcircle = zeros(151);
+% r = 60;
+% cx = 83;
+% cy = 80;
+% for i = 1:1000
+%     for j = 1:1000
+%         if((cx-i)^2 + (cy-j)^2) <= r^2+10 && ((cx-i)^2 + (cy-j)^2) >= r^2-10
+%             realcircle(i,j)=1;
+%         end
+%     end
+% end
+% figure
+% imagesc(realcircle);
+% colormap(gray);
+
+%% 
+% 
+% %截取cyst部分显示
+% figure(2)
+% [row,column] = size(img);
+% cystimg = img(0.16*row:0.31*row,0.4*column:0.6*column);
+% image(cystimg);
+% colorbar
+% colormap(gray(128));
+% %转化为二值图像
+% BWcyst = imbinarize(cystimg);
+% figure
+% Bcyst = ~BWcyst;
+% imagesc(Bcyst);
+% colormap(gray);
+% 
+% 
+% %网上的边界追踪程序
+% [m,n]=size(BWcyst);
+% edge1=zeros(m,n);        %边界标记图像
+% ed=[-1 -1;0 -1;1 -1;1 0;1 1;0 1;-1 1;-1 0]; %从左上角像素，逆时针搜索
+% for i=2:m-1
+%     for j=2:n-1
+%         if Bcyst(i,j)==1 && edge1(i,j)==0      %当前是没标记的白色像素
+%             if sum(sum(Bcyst(i-1:i+1,j-1:j+1)))~=9    %块内部的白像素不标记
+%                 ii=i;         %像素块内部搜寻使用的坐标
+%                 jj=j;
+%                 edge1(i,j)=2;    %本像素块第一个标记的边界，第一个边界像素为2
+%                 
+%                 while edge1(ii,jj)~=2    %是否沿着像素块搜寻一圈了。
+%                     for k=1:8           %逆时针八邻域搜索
+%                         tmpi=ii+ed(k,1);        %八邻域临时坐标
+%                         tmpj=jj+ed(k,2);
+%                         if Bcyst(tmpi,tmpj)==1 && edge1(tmpi,tmpj)~=2  %搜索到新边界，并且没有搜索一圈
+%                             ii=tmpi;        %更新内部搜寻坐标，继续搜索
+%                             jj=tmpj;
+%                             edge1(ii,jj)=1;  %边界标记图像该像素标记，普通边界为1
+%                             break;
+%                         end
+%                     end
+%                 end
+%                 
+%             end
+%         end
+%     end
+% end
+% 
+% figure;
+% edge1=edge1>=1;
+% imagesc(edge1);
+% colormap(gray);
+% 
+% %通常是原图减去其腐蚀图就行了
+% % se = strel('square',3); 
+% % edge1=Bcyst-imerode(Bcyst,se);    
+% % figure;
+% % imagesc(edge1);
+% % colormap(gray);
+% 
